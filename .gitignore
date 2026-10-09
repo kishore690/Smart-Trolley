@@ -1,0 +1,12 @@
+venv/
+venv_old/
+venv_ai_backup/
+.venv/
+__pycache__/
+*.py[cod]
+motor_command.txt
+camera_test.jpg
+person_detection.jpg
+yolov8n.pt
+*.swp
+*~
