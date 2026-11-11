@@ -1,0 +1,6 @@
+{
+  "focal_y_px": 500.0,
+  "horizontal_fov_deg": 69.0,
+  "image_size": 320,
+  "notes": "Replace focal_y_px and horizontal_fov_deg with measurements for the exact USB webcam, lens, and resolution."
+}

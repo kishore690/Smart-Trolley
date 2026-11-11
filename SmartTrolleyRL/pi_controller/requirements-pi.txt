@@ -1,0 +1,6 @@
+numpy>=1.26,<3
+opencv-python>=4.8,<5
+onnxruntime>=1.18,<2
+gpiozero>=2.0,<3
+fastapi>=0.115,<1
+uvicorn>=0.30,<1

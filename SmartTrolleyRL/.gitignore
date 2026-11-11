@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+models/*.zip
+models/*.onnx
+logs/*
+!logs/.gitkeep

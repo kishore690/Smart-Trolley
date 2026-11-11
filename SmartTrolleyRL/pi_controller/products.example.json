@@ -1,0 +1,10 @@
+{
+  "8901234567890": {
+    "name": "Sample Biscuit",
+    "price": 20.0
+  },
+  "8901234567891": {
+    "name": "Sample Chips",
+    "price": 30.0
+  }
+}

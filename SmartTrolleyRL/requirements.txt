@@ -1,0 +1,5 @@
+numpy>=1.26,<3
+gymnasium>=1.0,<2
+stable-baselines3>=2.5,<3
+tensorboard>=2.18,<3
+onnx>=1.16,<2

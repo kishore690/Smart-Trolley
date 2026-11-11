@@ -1,0 +1,12 @@
+{
+  "appId": "com.cartly.smarttrolley",
+  "appName": "Cartly",
+  "webDir": "dist",
+  "backgroundColor": "#f5f6f4",
+  "server": {
+    "androidScheme": "http"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

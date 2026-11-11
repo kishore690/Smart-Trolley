@@ -1,0 +1,515 @@
+#VRML_SIM R2025a utf8
+
+WorldInfo {
+}
+Viewpoint {
+  fieldOfView 1.3
+  orientation 0 0 1 4.71238898038469
+  position -7.212887767948854e-15 16.057022954582223 0
+}
+Background {
+  skyColor [
+    0.75 0.82 0.92
+  ]
+}
+DirectionalLight {
+  direction -0.4 -1 -0.3
+}
+DEF FLOOR Solid {
+  translation 0 -0.05 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.82 0.84 0.8
+        roughness 1
+      }
+      geometry Box {
+        size 16 0.1 12
+      }
+    }
+  ]
+  name "floor"
+  boundingObject Box {
+    size 16 0.1 12
+  }
+}
+DEF WALL_N Solid {
+  translation 0 0.7 -6
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.68 0.7 0.73
+        roughness 1
+      }
+      geometry Box {
+        size 16 1.4 0.15
+      }
+    }
+  ]
+  name "wall north"
+  boundingObject Box {
+    size 16 1.4 0.15
+  }
+}
+DEF WALL_S Solid {
+  translation 0 0.7 6
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.68 0.7 0.73
+        roughness 1
+      }
+      geometry Box {
+        size 16 1.4 0.15
+      }
+    }
+  ]
+  name "wall south"
+  boundingObject Box {
+    size 16 1.4 0.15
+  }
+}
+DEF WALL_E Solid {
+  translation 8 0.7 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.68 0.7 0.73
+        roughness 1
+      }
+      geometry Box {
+        size 0.15 1.4 12
+      }
+    }
+  ]
+  name "wall east"
+  boundingObject Box {
+    size 0.15 1.4 12
+  }
+}
+DEF WALL_W Solid {
+  translation -8 0.7 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.68 0.7 0.73
+        roughness 1
+      }
+      geometry Box {
+        size 0.15 1.4 12
+      }
+    }
+  ]
+  name "wall west"
+  boundingObject Box {
+    size 0.15 1.4 12
+  }
+}
+DEF SHELF_LEFT Solid {
+  translation -2.8 0.58 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.62 0.4 0.23
+        roughness 0.85
+      }
+      geometry Box {
+        size 0.55 1.16 5.2
+      }
+    }
+  ]
+  name "left supermarket shelf"
+  boundingObject Box {
+    size 0.55 1.16 5.2
+  }
+}
+DEF SHELF_RIGHT Solid {
+  translation 2.8 0.58 0
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.62 0.4 0.23
+        roughness 0.85
+      }
+      geometry Box {
+        size 0.55 1.16 5.2
+      }
+    }
+  ]
+  name "right supermarket shelf"
+  boundingObject Box {
+    size 0.55 1.16 5.2
+  }
+}
+DEF AISLE_OBSTACLE_1 Solid {
+  translation 0.15 0.48 1.1
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.86 0.38 0.18
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.68 0.96 0.68
+      }
+    }
+  ]
+  name "orange aisle display"
+  boundingObject Box {
+    size 0.68 0.96 0.68
+  }
+}
+DEF AISLE_OBSTACLE_2 Solid {
+  translation 1.9 0.48 -1.6
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.25 0.54 0.78
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.7 0.96 0.7
+      }
+    }
+  ]
+  name "blue aisle display"
+  boundingObject Box {
+    size 0.7 0.96 0.7
+  }
+}
+DEF TARGET_HUMAN Robot {
+  translation -0.14522213344106463 0 3.0642373177300994
+  children [
+    Pose {
+      translation 0 0.48 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.16 0.36 0.82
+            roughness 0.65
+          }
+          geometry Cylinder {
+            height 0.85
+            radius 0.16
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 1.1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.88 0.67 0.48
+            roughness 0.8
+          }
+          geometry Sphere {
+            radius 0.18
+          }
+        }
+      ]
+    }
+  ]
+  name "target_human"
+  boundingObject Pose {
+    translation 0 0.62 0
+    children [
+      Capsule {
+        height 0.75
+        radius 0.16
+        subdivision 16
+      }
+    ]
+  }
+  controller "human_controller"
+  supervisor TRUE
+}
+DEF DISTRACTOR_A Robot {
+  translation -2.0644899217918264 0 0.22702724190578158
+  children [
+    Pose {
+      translation 0 0.48 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.68 0.24 0.22
+            roughness 0.8
+          }
+          geometry Cylinder {
+            height 0.85
+            radius 0.16
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 1.1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.88 0.68 0.5
+            roughness 0.8
+          }
+          geometry Sphere {
+            radius 0.18
+          }
+        }
+      ]
+    }
+  ]
+  name "distractor_a"
+  boundingObject Pose {
+    translation 0 0.62 0
+    children [
+      Capsule {
+        height 0.75
+        radius 0.16
+        subdivision 16
+      }
+    ]
+  }
+  controller "distractor_controller"
+  supervisor TRUE
+}
+DEF DISTRACTOR_B Robot {
+  translation 2.0644899217920574 0 3.9729727580932965
+  children [
+    Pose {
+      translation 0 0.48 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.22 0.62 0.36
+            roughness 0.8
+          }
+          geometry Cylinder {
+            height 0.85
+            radius 0.16
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 1.1 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.88 0.68 0.5
+            roughness 0.8
+          }
+          geometry Sphere {
+            radius 0.18
+          }
+        }
+      ]
+    }
+  ]
+  name "distractor_b"
+  boundingObject Pose {
+    translation 0 0.62 0
+    children [
+      Capsule {
+        height 0.75
+        radius 0.16
+        subdivision 16
+      }
+    ]
+  }
+  controller "distractor_controller"
+  supervisor TRUE
+}
+DEF TROLLEY Robot {
+  translation 0.44537401962660095 0.25 2.561974647383153
+  rotation 0 1 0 2.4453399269652336
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.18 0.2 0.22
+        roughness 0.45
+        metalness 0.25
+      }
+      geometry Box {
+        size 0.62 0.4 0.72
+      }
+    }
+    Pose {
+      translation 0 -0.14 0.29
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.12 0.12 0.12
+            roughness 0.9
+          }
+          geometry Sphere {
+            radius 0.08
+          }
+        }
+      ]
+    }
+    Pose {
+      translation -0.37 -0.09 0
+      rotation 0 0 1 1.5708
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.08 0.08 0.08
+            roughness 0.9
+          }
+          geometry Cylinder {
+            height 0.1
+            radius 0.16
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0.37 -0.09 0
+      rotation 0 0 1 1.5708
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.08 0.08 0.08
+            roughness 0.9
+          }
+          geometry Cylinder {
+            height 0.1
+            radius 0.16
+          }
+        }
+      ]
+    }
+    Pose {
+      translation 0 0.28 0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.75 0.78 0.78
+            roughness 0.3
+            metalness 0.45
+          }
+          geometry Box {
+            size 0.54 0.28 0.56
+          }
+        }
+      ]
+    }
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position 4710.789600801991
+        anchor -0.37 -0.09 0
+      }
+      device [
+        RotationalMotor {
+          name "left wheel motor"
+        }
+        PositionSensor {
+          name "left wheel sensor"
+        }
+      ]
+      endPoint Solid {
+        translation -0.37 -0.09 0
+        rotation -0.5827715883277377 0.5827737289712415 0.5663497653031384 2.1109776038352743
+        children [
+          Shape {
+            appearance PBRAppearance {
+              transparency 1
+            }
+            geometry Cylinder {
+              height 0.1
+              radius 0.16
+            }
+          }
+        ]
+        name "left wheel"
+        boundingObject Cylinder {
+          height 0.1
+          radius 0.16
+        }
+        physics Physics {
+          density -1
+          mass 1
+        }
+        linearVelocity 0.19246256209652052 0.18067752063893788 -0.03287593185824541
+        angularVelocity 0.0015847451185844446 -0.001450749727420668 0.001308172746927837
+      }
+    }
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        position 3496.9333781690884
+        anchor 0.37 -0.09 0
+      }
+      device [
+        RotationalMotor {
+          name "right wheel motor"
+        }
+        PositionSensor {
+          name "right wheel sensor"
+        }
+      ]
+      endPoint Solid {
+        translation 0.37 -0.09 0
+        rotation 0.7019303276192556 -0.7019329059580526 -0.1207642774234509 3.3819563508059627
+        children [
+          Shape {
+            appearance PBRAppearance {
+              transparency 1
+            }
+            geometry Cylinder {
+              height 0.1
+              radius 0.16
+            }
+          }
+        ]
+        name "right wheel"
+        boundingObject Cylinder {
+          height 0.1
+          radius 0.16
+        }
+        physics Physics {
+          density -1
+          mass 1
+        }
+        linearVelocity 0.3586548119526074 1.5724297903754207 -0.04619738290279863
+        angularVelocity 0.0059411695738131815 -0.0012082780151713077 0.0050085465725620585
+      }
+    }
+    DistanceSensor {
+      translation 0 0.08 -0.38
+      rotation 0 1 0 3.14159
+      name "front distance"
+      lookupTable [
+        0 0 0
+        8 8000 0
+      ]
+      type "infra-red"
+      numberOfRays 3
+      aperture 0.35
+    }
+    DistanceSensor {
+      translation -0.28 0.08 0
+      rotation 0 1 0 -1.5708
+      name "left distance"
+      lookupTable [
+        0 0 0
+        8 8000 0
+      ]
+      type "infra-red"
+    }
+    DistanceSensor {
+      translation 0.28 0.08 0
+      rotation 0 1 0 1.5708
+      name "right distance"
+      lookupTable [
+        0 0 0
+        8 8000 0
+      ]
+      type "infra-red"
+    }
+  ]
+  name "smart_trolley"
+  boundingObject Box {
+    size 0.62 0.4 0.72
+  }
+  controller "trolley_controller"
+  supervisor TRUE
+}
