@@ -9,7 +9,7 @@ import { useActiveSession } from './hooks/useActiveSession.js';
 import { useCart } from './hooks/useCart.js';
 import { useRental } from './hooks/useRental.js';
 import { useTrolleyStatus } from './hooks/useTrolleyStatus.js';
-import { checkout } from './api/sessionApi.js';
+import { checkout, startSession } from './api/sessionApi.js';
 
 const keyOf = (s) => (s ? s.id ?? `t${s.startedAtMs}` : null);
 
@@ -23,15 +23,17 @@ export default function App() {
   const sessionKey = isActive ? keyOf(session) : null;
 
   const rental = useRental(isActive ? session : null, sess.clockOffsetMs);
-  // Poll the backend scan feed even before RFID starts a session, so the home screen
-  // can show the trolley's latest physical barcode scan.
+  // Poll the backend scan feed even before the app starts a session, so the home
+  // screen can show the trolley's latest physical barcode scan.
   const cartState = useCart({ sessionId: sessionKey, enabled: health.status === 'connected', fallback: session?.cart ?? null });
 
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutUi, setCheckoutUi] = useState({ busy: false, error: null });
+  const [startUi, setStartUi] = useState({ busy: false, pending: false, error: null });
   const [completion, setCompletion] = useState(null);   // { kind, bill, session, cart }
   const [dismissedKey, setDismissedKey] = useState(null);
   const checkoutLock = useRef(false);                   // blocks duplicate submissions
+  const startLock = useRef(false);                      // blocks duplicate session starts
   const snapshot = useRef(null);                        // last live { session, cart } the app saw
 
   // Detect a session that ended without this app checking it out. Never triggers a checkout.
@@ -67,6 +69,28 @@ export default function App() {
   }, [isActive, session, sessionKey, cartState.status, cartState.cart]);
 
   useEffect(() => { if (!isActive) setCheckoutOpen(false); }, [isActive]);
+
+  useEffect(() => {
+    if ((isActive || sess.status === 'error') && (startUi.busy || startUi.pending)) {
+      setStartUi({ busy: false, pending: false, error: null });
+    }
+  }, [isActive, sess.status, startUi.busy, startUi.pending]);
+
+  const handleStartSession = useCallback(async () => {
+    if (startLock.current || startUi.pending || isActive) return;
+    startLock.current = true;
+    setStartUi({ busy: true, pending: false, error: null });
+    try {
+      await startSession();
+      setStartUi({ busy: false, pending: true, error: null });
+      sess.refresh();
+    } catch (err) {
+      setStartUi({ busy: false, pending: false, error: err.message });
+      sess.refresh();
+    } finally {
+      startLock.current = false;
+    }
+  }, [startUi.pending, isActive, sess]);
 
   const handleConfirmCheckout = useCallback(async () => {
     if (checkoutLock.current || !isActive) return;
@@ -127,6 +151,10 @@ export default function App() {
             sessionState={sess}
             trolley={trolley}
             cartState={cartState}
+            onStart={handleStartSession}
+            startBusy={startUi.busy}
+            startPending={startUi.pending}
+            startError={startUi.error}
             onRetry={() => { health.retry(); sess.refresh(); }}
           />
         )}

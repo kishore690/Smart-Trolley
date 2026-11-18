@@ -1,18 +1,17 @@
 # Cartly Smart Trolley — Customer App
 
-React 18 + Vite app that mirrors a real shopping session on the Cartly trolley
-(Raspberry Pi + FastAPI). It is a **display and checkout client**: the RFID card, camera
-following and barcode scanner all live on the trolley; this app only reads their results
-from the backend.
+React 18 + Vite app that starts and mirrors a shopping session on the Cartly trolley
+(Raspberry Pi + FastAPI). It starts the trolley from the phone, displays session and cart
+updates, and sends checkout when the customer confirms.
 
 ```
-RFID scan at trolley → session starts → app switches to the live session automatically
+Tap Start Trolley in app → session starts → camera follows the customer
 → barcode scans fill the cart → rental timer runs from the backend's started_at
 → checkout (real POST /api/checkout) → bill returned by the backend
 ```
 
-No payment is integrated in this version, and nothing in the app simulates RFID, scans,
-hardware, or a connection. If the backend is unreachable the app says so.
+No payment is integrated in this version. The app does not simulate scans, hardware, or a
+connection. If the backend is unreachable the app says so.
 
 ## Setup
 
@@ -105,7 +104,7 @@ src/
   utils/dateTime.js, format.js, finalBill.js
   components/               Header, ConnectionStatus, RentalTimer, SessionStatus, HardwareStatus,
                             CartItem, CartSummary, Banner, StateMessage
-  pages/                    HomePage (loading / unreachable / waiting for RFID), ActiveSessionPage,
+  pages/                    HomePage (loading / unreachable / Start Trolley), ActiveSessionPage,
                             CheckoutPage, SessionCompletePage
 tests/                      node:test unit tests
 scripts/configure-android.mjs

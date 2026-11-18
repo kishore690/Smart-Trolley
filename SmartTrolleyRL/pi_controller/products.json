@@ -1,7 +1,11 @@
 {
   "8902519001580": {
-    "name": "Book",
+    "name": "Classmate book",
     "price": 65.00
+  },
+  "8806095851839": {
+    "name": "Galaxy S25",
+    "price": 80999.00
   },
   "8806094913736": {
     "name": "Samsung Adapter",
@@ -10,9 +14,5 @@
   "8806094522563": {
     "name": "Samsung EarPhones",
     "price": 1099.00
-  },
-  "8806095851839": {
-    "name": "Samsung Galaxy S25",
-    "price": 80999.00
   }
 }

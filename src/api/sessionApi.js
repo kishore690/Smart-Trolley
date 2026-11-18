@@ -16,6 +16,16 @@ export async function getTrolleyStatus(signal) {
   return normalizeTrolleyStatus(data);
 }
 
+/** Start a new trolley session from the customer app. */
+export async function startSession(signal) {
+  const { data } = await request('/api/session/start', {
+    method: 'POST',
+    signal,
+    timeoutMs: 8000,
+  });
+  return data;
+}
+
 /**
  * Resolves { session, serverTimeMs }. `session === null` means the backend answered
  * and there is no active session. Network/HTTP failures throw - they are never "no session".

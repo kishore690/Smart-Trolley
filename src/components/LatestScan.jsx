@@ -4,9 +4,9 @@ import { parseTimestamp } from '../utils/dateTime.js';
 
 function scanLabel(scan) {
   const status = String(scan.status ?? '').toLowerCase();
-  if (scan.cart_added === true) return 'Added to cart';
-  if (scan.cart_added === false) return 'Matched, but not added';
   if (['unknown_product', 'unknown', 'not_found', 'invalid', 'error'].includes(status)) return 'Barcode not recognised';
+  if (scan.cart_added === true) return 'Added to cart';
+  if (scan.cart_added === false) return 'Removed from cart';
   if (scan.product) return 'Product matched';
   return 'Scan received';
 }

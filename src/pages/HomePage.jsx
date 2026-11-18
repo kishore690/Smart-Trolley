@@ -1,13 +1,14 @@
-import { CreditCard, WifiOff, RefreshCw } from 'lucide-react';
+import { Play, WifiOff, RefreshCw } from 'lucide-react';
 import StateMessage from '../components/StateMessage.jsx';
 import HardwareStatus from '../components/HardwareStatus.jsx';
+import Banner from '../components/Banner.jsx';
 import { BILLING } from '../config.js';
 import { hostLabel } from '../api/client.js';
 import { formatINR } from '../utils/format.js';
 import LatestScan from '../components/LatestScan.jsx';
 
-/** Shown whenever there is no active session: loading, unreachable, or waiting for an RFID scan. */
-export default function HomePage({ health, sessionState, trolley, cartState, onRetry }) {
+/** Shown whenever there is no active session: loading, unreachable, or ready to start. */
+export default function HomePage({ health, sessionState, trolley, cartState, onRetry, onStart, startBusy, startPending, startError }) {
   const unreachable = health.status === 'disconnected' || sessionState.status === 'error';
   const loading = !unreachable && (health.status === 'connecting' || sessionState.status === 'loading');
 
@@ -38,11 +39,18 @@ export default function HomePage({ health, sessionState, trolley, cartState, onR
   return (
     <>
       <StateMessage
-        icon={<CreditCard size={30} />}
-        title="Scan your RFID card at the trolley"
-        pulse
+        icon={startPending ? <span className="spinner" /> : <Play size={30} />}
+        title={startPending ? 'Starting your trolley' : 'Ready to start'}
+        pulse={!startPending}
+        action={(
+          <button type="button" className="btn btn-primary" onClick={onStart} disabled={startBusy || startPending} aria-busy={startBusy || startPending}>
+            {startBusy || startPending ? <span className="spinner spinner-sm" aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+            {startBusy || startPending ? 'Starting trolley…' : 'Start Trolley'}
+          </button>
+        )}
       >
-        <p>Your shopping session starts when the backend reports the RFID session. This screen updates automatically.</p>
+        <p>Start a shopping session from this app. The trolley will look for you with its camera.</p>
+        {startError && <Banner tone="danger">Could not start the trolley. {startError}</Banner>}
       </StateMessage>
 
       <section className="panel" aria-labelledby="trolley-h">

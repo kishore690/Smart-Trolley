@@ -13,8 +13,7 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 import RPi.GPIO as GPIO
-from evdev import InputDevice, ecodes
-from mfrc522 import SimpleMFRC522
+from evdev import InputDevice, ecodes, list_devices
 from RPLCD.i2c import CharLCD
 
 
@@ -30,8 +29,6 @@ PPO_MODEL_PATH = os.environ.get(
 )
 
 CAMERA_INDEX = 0
-
-AUTHORIZED_CARDS = {995728951076}
 
 SESSION_PRICE_RUPEES = 20
 SESSION_MINUTES = 30
@@ -96,6 +93,8 @@ LCD_ADDRESS = 0x27
 BARCODE_DEVICE_GLOB = (
     "/dev/input/by-id/*event-kbd"
 )
+BARCODE_DEVICE_PATH = os.environ.get("TROLLEY_BARCODE_DEVICE", "").strip()
+BARCODE_DEVICE_NAME = os.environ.get("TROLLEY_BARCODE_DEVICE_NAME", "M4 YX USB HID Keyboard").strip().lower()
 BARCODE_DUPLICATE_GUARD_SECONDS = 0.35
 
 # Product catalogue
@@ -126,8 +125,6 @@ cart = {}
 cart_lock = threading.Lock()
 
 lcd = None
-reader = None
-
 onnx_session = None
 input_name = None
 ppo_session = None
@@ -146,10 +143,11 @@ active_session_state = None
 latest_scan_state = None
 camera_active = False
 barcode_scanner_active = False
+barcode_scanner_detail = "not started"
 api_server_thread = None
 checkout_requested = threading.Event()
 session_finished = threading.Event()
-authorized_card_id = None
+start_requested = threading.Event()
 
 
 def load_product_catalogue():
@@ -205,7 +203,7 @@ def cart_snapshot():
     }
 
 
-def publish_scan(code, found, message=None):
+def publish_scan(code, found, message=None, product=None, cart_added=None):
     global latest_scan_state
     with api_state_lock:
         latest_scan_state = {
@@ -214,6 +212,8 @@ def publish_scan(code, found, message=None):
             "found": found,
             "status": "found" if found else "not_found",
             "message": message,
+            "product": ({"name": product["name"], "price": float(product["price"])} if product else None),
+            "cart_added": cart_added,
             "scanned_at": datetime.now().astimezone().isoformat(),
         }
 
@@ -279,6 +279,7 @@ def start_api_server():
                 "controller": motor_pwm_left is not None and motor_pwm_right is not None,
                 "camera": camera_active,
                 "scanner": barcode_scanner_active,
+                "scanner_detail": barcode_scanner_detail,
                 "hardware_note": "API is running in the trolley process. Camera and barcode scanner status reflect their current session state.",
             }
 
@@ -291,6 +292,18 @@ def start_api_server():
             current["cart"] = cart_snapshot()
             current["product_total"] = current["cart"]["product_total"]
             return {"session": current, "server_time": datetime.now().astimezone().isoformat()}
+
+        @app.post("/api/session/start", status_code=202)
+        def request_session_start():
+            with api_state_lock:
+                current = active_session_state
+                if current and current.get("status") == "active":
+                    raise HTTPException(status_code=409, detail="A trolley session is already active")
+                if start_requested.is_set():
+                    return {"status": "starting", "message": "Trolley start is already queued"}
+                start_requested.set()
+            print("[APP] Trolley start requested from Cartly.")
+            return {"status": "starting", "message": "Trolley session is starting"}
 
         @app.get("/api/cart")
         def get_cart():
@@ -565,60 +578,21 @@ def lcd_session_time(seconds):
 
 
 # ============================================================
-# RFID
+# PHONE APP SESSION START
 # ============================================================
 
-def setup_rfid():
-
-    global reader
-
-    reader = SimpleMFRC522()
-
-
-def wait_for_authorized_card():
-
-    global authorized_card_id
-
-    buddy(0, "Scan your RFID")
-
-    print("[RFID] Waiting for card...")
+def wait_for_app_start():
+    """Keep the trolley idle until a user taps Start Trolley in Cartly."""
+    print("[APP] Waiting for Start Trolley request from Cartly.")
+    buddy(0, "Open app to start")
 
     while True:
-
-        try:
-
-            card_id, _ = reader.read()
-
-            print("[RFID] Card:", card_id)
-
-            if card_id in AUTHORIZED_CARDS:
-
-                authorized_card_id = str(card_id)
-
-                print("[RFID] Authorized.")
-
-                buddy(0, "Welcome!")
-
-                return True
-
-            print("[RFID] Unauthorized card.")
-
-            buddy(2, "Card not valid")
-
-            time.sleep(1.5)
-
-            buddy(0, "Scan your RFID")
-
-        except KeyboardInterrupt:
-            raise
-
-        except Exception as exc:
-
-            print("[RFID] Read error:", exc)
-
-            stop_motors()
-
-            time.sleep(1)
+        stop_motors()
+        if start_requested.wait(timeout=0.25):
+            start_requested.clear()
+            print("[APP] Starting trolley session.")
+            buddy(0, "Starting trolley")
+            return
 
 
 # ============================================================
@@ -657,26 +631,62 @@ def key_to_character(code):
 
 def barcode_reader_worker():
 
-    global barcode_scanner_active
+    global barcode_scanner_active, barcode_scanner_detail
 
-    devices = glob.glob(BARCODE_DEVICE_GLOB)
+    available = []
+    open_errors = []
+    if BARCODE_DEVICE_PATH:
+        candidates = [BARCODE_DEVICE_PATH]
+    else:
+        # Prefer a live evdev node matched by its USB-reported name. The
+        # /dev/input/by-id link can remain stale after USB reconnects.
+        named_candidates = []
+        other_candidates = []
+        for path in list_devices():
+            try:
+                probe = InputDevice(path)
+                name = probe.name or ""
+                probe.close()
+                available.append(f"{path} ({name})")
+                if BARCODE_DEVICE_NAME in name.lower():
+                    named_candidates.append(path)
+                else:
+                    other_candidates.append(path)
+            except OSError as exc:
+                available.append(f"{path} (unavailable: {exc})")
+                other_candidates.append(path)
+        symlinks = sorted(glob.glob(BARCODE_DEVICE_GLOB))
+        candidates = named_candidates + symlinks + other_candidates
 
-    if not devices:
+    # De-duplicate while preserving the preferred order.
+    candidates = list(dict.fromkeys(candidates))
+    device = None
+    device_path = None
+    for candidate in candidates:
+        try:
+            opened = InputDevice(candidate)
+            if BARCODE_DEVICE_PATH or BARCODE_DEVICE_NAME in (opened.name or "").lower():
+                device = opened
+                device_path = candidate
+                break
+            opened.close()
+        except OSError as exc:
+            open_errors.append(f"{candidate}: {exc}")
 
+    if device is None:
         barcode_scanner_active = False
-
-        print("[BARCODE] Scanner not found.")
-
+        detail = "; ".join(available) if available else "no evdev input devices detected"
+        if open_errors:
+            detail += "; open errors: " + "; ".join(open_errors)
+        barcode_scanner_detail = "M4 scanner could not be opened; " + detail
+        print("[BARCODE] Scanner not found:", barcode_scanner_detail)
         return
-
-    device_path = devices[0]
-
-    print("[BARCODE] Reading from:", device_path)
 
     try:
 
-        device = InputDevice(device_path)
         barcode_scanner_active = True
+        barcode_scanner_detail = f"connected: {device.name} ({device_path})"
+        print("[BARCODE] Reading from:", device_path, "(", device.name, ")")
         buffer = ""
         last_digit_at = None
 
@@ -723,6 +733,7 @@ def barcode_reader_worker():
     except PermissionError:
 
         barcode_scanner_active = False
+        barcode_scanner_detail = f"permission denied opening {device_path}; check input group access"
 
         print(
             "[BARCODE] Permission denied. "
@@ -732,6 +743,7 @@ def barcode_reader_worker():
     except OSError as exc:
 
         barcode_scanner_active = False
+        barcode_scanner_detail = f"could not open/read {device_path}: {exc}"
 
         if not barcode_stop.is_set():
             print("[BARCODE] Error:", exc)
@@ -753,9 +765,10 @@ def start_barcode_reader():
 
 def stop_barcode_reader():
 
-    global barcode_scanner_active
+    global barcode_scanner_active, barcode_scanner_detail
     barcode_stop.set()
     barcode_scanner_active = False
+    barcode_scanner_detail = "stopped"
 
 
 def process_barcode(code):
@@ -790,11 +803,11 @@ def process_barcode(code):
             }
 
     if removed:
-        publish_scan(code, True, f"Removed {product['name']} from the cart")
+        publish_scan(code, True, f"Removed {product['name']} from the cart", product, False)
         print(f"[CART] Removed {product['name']} from cart.")
         buddy(2, "Item removed")
     else:
-        publish_scan(code, True, f"Added {product['name']}")
+        publish_scan(code, True, f"Added {product['name']}", product, True)
         print(f"[CART] Added {product['name']} Rs.{product['price']:.2f}")
         buddy(0, f"{product['name'][:8]} Rs{product['price']:.0f}")
 
@@ -1261,7 +1274,8 @@ def run_shopping_session():
     with api_state_lock:
         active_session_state = {
             "session_id": str(uuid.uuid4()),
-            "card_id": authorized_card_id,
+            "customer": "Phone app",
+            "card_id": None,
             "started_at": session_started_aware.isoformat(),
             "status": "active",
             "can_checkout": True,
@@ -1283,9 +1297,7 @@ def run_shopping_session():
         f"for {SESSION_MINUTES} minutes"
     )
 
-    print(
-        "[SESSION] RFID activation is not payment processing."
-    )
+    print("[SESSION] Started from Cartly; no payment has been collected.")
 
     with cart_lock:
         cart.clear()
@@ -1333,10 +1345,6 @@ def run_shopping_session():
     last_barcode = None
     last_barcode_time = 0.0
 
-    # Require card removal before accepting second scan.
-    rfid_armed = False
-    rfid_last_seen = time.monotonic()
-
     buddy(3, "Looking for you")
 
     print("[CAMERA] Stand in front of camera for 5 seconds.")
@@ -1355,46 +1363,6 @@ def run_shopping_session():
 
             if remaining <= 0:
                 break
-
-            # --------------------------------------------
-            # SECOND RFID SCAN
-            # --------------------------------------------
-
-            try:
-
-                scanned_id = reader.read_id_no_block()
-
-            except Exception as exc:
-
-                scanned_id = None
-
-                print("[RFID] Scan warning:", exc)
-
-            now_rfid = time.monotonic()
-
-            if scanned_id is None:
-
-                if now_rfid - rfid_last_seen >= 1.5:
-                    rfid_armed = True
-
-            else:
-
-                rfid_last_seen = now_rfid
-
-                if (
-                    rfid_armed
-                    and scanned_id in AUTHORIZED_CARDS
-                ):
-
-                    print("[RFID] Same card scanned again.")
-
-                    print("[RFID] Session stop requested.")
-
-                    buddy(0, "Session stopping")
-
-                    stop_motors()
-
-                    break
 
             # --------------------------------------------
             # PROCESS BARCODE SCANS
@@ -1619,8 +1587,6 @@ def main():
 
         setup_lcd()
 
-        setup_rfid()
-
         load_model()
 
         stop_motors()
@@ -1652,6 +1618,8 @@ def main():
 
         print("Barcode scanner: USB HID")
 
+        print("Session start: Cartly phone app")
+
         print("Session: Rs.20 / 30 minutes")
 
         print("Display mode: Headless")
@@ -1664,13 +1632,13 @@ def main():
 
             stop_motors()
 
-            wait_for_authorized_card()
+            wait_for_app_start()
 
             run_shopping_session()
 
             stop_motors()
 
-            buddy(0, "Scan your RFID")
+            buddy(0, "Open app to start")
 
             print("[SYSTEM] Ready for next customer.")
 
